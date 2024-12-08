@@ -16,7 +16,16 @@ def printBoard(board):
 
 
 def checkCollision(ballPos, ballSpeed, player1Pos, player2Pos):
-
+    """
+    TODO: Use helper functions to organize
+    
+    Checks if ball collides with border or paddle and handles ball velocity accordingly
+    
+    @params {list} ballPos: X Y of ball at [0][0] 
+    @params {list} ballSpeed: X Y speed of ball
+    @params {list} player1Pos: X Y position of player1 at [0][0]
+    @params {list} player2Pos: X Y position of player2 at [0][0]
+    """
 
     # If ball touches top/bot border reverse Y speed
     if ballPos[1] + 1 >= 19 or ballPos[1] <= 0:
@@ -75,12 +84,26 @@ def checkCollision(ballPos, ballSpeed, player1Pos, player2Pos):
 
 
 def insertObjects(board, ballPos, player1Pos, player2Pos):
+    """
+    Inserts ball, player paddles into board. Using deepcopy to not change mutable board
+    
+    @params {list} board: 2D list of gameboard
+    @params {list} ballPos: X Y of ball at [0][o]
+    @params {list} player1Pos: X Y of player1 at [0][o]
+    @params {list} player2Pos: X Y of player2 at [0][o]
+    
+    @returns {list} tempBoard: 2D list of temporary board with object
+    """
 
+    # Deepcopy so Lists inside List are also copied without reference
     tempBoard = copy.deepcopy(board)
+    
+    # Insert player paddles
     for i in range(playerLen):
         tempBoard[round(player1Pos[1]) + i][round(player1Pos[0])] = "┃"
         tempBoard[round(player2Pos[1]) + i][round(player2Pos[0])] = "┃"
 
+    # Insert ball
     for i, row in enumerate(ball):
         ballPosY = round(ballPos[1]) + i
         if 1 <= ballPosY <= 19:
@@ -94,6 +117,9 @@ def insertObjects(board, ballPos, player1Pos, player2Pos):
 
 
 def normalizeVelocity(speed):
+    """
+    To avoid faster ball when going diagonal use normalization
+    """
     # Calculate the magnitude of the velocity vector
     magnitude = math.sqrt(speed[0] ** 2 + speed[1] ** 2)
 
@@ -116,13 +142,16 @@ def startGame(board):
     player2Pos = [len(board[0]) - playerDistanceBorder - 1, halfHeightBoard]
     ballPos = [playerDistanceBorder + ballDistanceFromPlayer, halfHeightBoard]
 
+    # [X speed, Y speed, normalized Speed (30 [] per second)
     ballSpeed = [1, 0, 30]
 
     moveUp = moveDown = False
 
+    # Gameloop
     while True:
         time.sleep(deltaTime)
 
+        # Check for keypress
         if msvcrt.kbhit():
             key = msvcrt.getch()
 
@@ -148,6 +177,8 @@ def startGame(board):
         if moveDown and player1Pos[1] + playerSpeed < len(board) - 2:
             player1Pos[1] += playerSpeed
 
+
+        # Computer paddle (player2 -> player on right side) 
         if ballPos[1] < player2Pos[1]:
             if player2Pos[1] - 1 > 0:
                 player2Pos[1] -= 10 * playerSpeed * deltaTime
@@ -220,11 +251,11 @@ def main():
 
 if __name__ == "__main__":
 
-    os.system("cls" if os.name == "nt" else "clear")
+    os.system("cls" if os.name == "nt" else "clear") # Clears terminal
 
     print("\033[?25l")  # Hide cursor
 
-    FRAMERATE = 100
+    FRAMERATE = 144
     deltaTime = 1/FRAMERATE
     
     playerDistanceBorder = 3
