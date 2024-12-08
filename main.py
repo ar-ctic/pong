@@ -6,6 +6,7 @@ import sys
 import math
 import random
 
+
 def printBoard(board):
 
     print("\033[H", end="")
@@ -16,51 +17,62 @@ def printBoard(board):
 
 def checkCollision(ballPos, ballSpeed, player1Pos, player2Pos):
 
-    ballRadius = len(ball) // 2
 
-    print(ballSpeed)
-    """
-    Checks if ball is at player X location
-    First check is for left player, second for right. Adds 
-    """
-    if (
-        player1Pos[0] - ballSpeed[0] <= ballPos[0] <= player1Pos[0]
-        or player2Pos[0] - ballRadius <= ballPos[0] <= player2Pos[0] - ballSpeed[0]
-    ):
+    # If ball touches top/bot border reverse Y speed
+    if ballPos[1] + 1 >= 19 or ballPos[1] <= 0:
+        ballSpeed[1] *= -1
+        
 
-        # Checks if ball is at player Y location
-        # Get middlepoint of playerPos
-        player1MidPos = (player1Pos[1] + player1Pos[1] + 1) / 2
-        player2MidPos = (player2Pos[1] + player2Pos[1] + 1) / 2
+    # Get ball location 1. tick before
+    ballPast = [ballPos[0] + ballSpeed[0] * deltaTime, ballPos[1] + ballSpeed[1] * deltaTime]
 
-        print(player1MidPos, player2MidPos, ballPos[1])
+    # Get vector from old to new ball
+    vectorBall = [ballPos[0] - ballPast[0], ballPos[1] - ballPast[1]]
 
-        if (
-            ballSpeed[0] > 0 and (player1MidPos - 2 <= ballPos[1] <= player1MidPos + 1)
-        ) or (
-            ballSpeed[0] < 0 and (player2MidPos - 2 <= ballPos[1] <= player2MidPos + 1)
-        ):
+    # Calculate slope 
+    if vectorBall[0] != 0:
+        slopeVectorBall = vectorBall[1]/vectorBall[0]
+    else:
+        slopeVectorBall = 0
+        
+        
+    # If paddle is at/between past and new ball X location
+    if ballPos[0] <= player1Pos[0] <= ballPast[0] or ballPast[0] <= player2Pos[0] <= ballPos[0] + 1:
+        
+
+        # Distance to either player1 or player2 (left, right)
+        if ballPos[0] <= player1Pos[0]:
+            distanceToPlayer = player1Pos[0] - ballPos[0]
+        else:
+            distanceToPlayer = player2Pos[0] - ballPos[0]
+        
+        # ball Y position if it was at exactly the paddle location
+        ballPosition = ballPos[1] + (distanceToPlayer * slopeVectorBall)
+
+        # Check for Y location
+        if ((player1Pos[1] <= ballPosition <= player1Pos[1] + 1.5 or player1Pos[1] <= ballPosition + 1 <= player1Pos[1] + 1.5) or
+        (player2Pos[1] <= ballPosition <= player2Pos[1] + 1.5 or player2Pos[1] <= ballPosition + 1 <= player2Pos[1] + 1.5)):
             
+            # Paddle middle position used for ball Y speed
+            player1MidPos = (player1Pos[1] + player1Pos[1] + 1) / 2
+            player2MidPos = (player2Pos[1] + player2Pos[1] + 1) / 2
+            
+            # Reverse speed of ball (bounce)
             ballSpeed[0] *= -1
             ballSpeed[2] = min(ballSpeed[2] * ballSpeedMulti, maxSpeed)
-
+            
+            
+            # Give ball Y speed based on distance to paddle Mid Position
             if ballSpeed[0] < 0:
                 diff = player1MidPos - ballPos[1] - 0.5
-                ballSpeed[1] = diff / 50 + random.randrange(-1, 1)/1000
+                ballSpeed[1] = 10 * diff + random.randrange(-1, 1) / 50
             elif ballSpeed[0] > 0:
                 diff = player2MidPos - ballPos[1] - 0.5
-                ballSpeed[1] = diff / 50 + random.randrange(-1, 1)/1000
+                ballSpeed[1] = 10 * diff + random.randrange(-1, 1) / 50
+            
+            
+    
 
-
-
-    # If ball hits border, reverse Y speed
-    if ballPos[1] + 1 >= 19 or ballPos[1] <= 1:
-        ballSpeed[1] *= -1
-
-
-    # For testing bounce from right wall
-    if ballPos[0] > 99:
-        ballSpeed[0] *= -1
 
 def insertObjects(board, ballPos, player1Pos, player2Pos):
 
@@ -68,7 +80,6 @@ def insertObjects(board, ballPos, player1Pos, player2Pos):
     for i in range(playerLen):
         tempBoard[round(player1Pos[1]) + i][round(player1Pos[0])] = "┃"
         tempBoard[round(player2Pos[1]) + i][round(player2Pos[0])] = "┃"
-
 
     for i, row in enumerate(ball):
         ballPosY = round(ballPos[1]) + i
@@ -81,9 +92,10 @@ def insertObjects(board, ballPos, player1Pos, player2Pos):
 
     return tempBoard
 
+
 def normalizeVelocity(speed):
     # Calculate the magnitude of the velocity vector
-    magnitude = math.sqrt(speed[0]**2 + speed[1]**2)
+    magnitude = math.sqrt(speed[0] ** 2 + speed[1] ** 2)
 
     # Avoid division by zero
     if magnitude == 0:
@@ -95,6 +107,7 @@ def normalizeVelocity(speed):
 
     return [normalized_x * speed[2], normalized_y * speed[2], speed[2]]
 
+
 def startGame(board):
 
     halfHeightBoard = len(board) // 2 - 1
@@ -103,10 +116,12 @@ def startGame(board):
     player2Pos = [len(board[0]) - playerDistanceBorder - 1, halfHeightBoard]
     ballPos = [playerDistanceBorder + ballDistanceFromPlayer, halfHeightBoard]
 
-    ballSpeed = [1, 0, 0.05]
+    ballSpeed = [1, 0, 30]
+
+    moveUp = moveDown = False
 
     while True:
-        time.sleep(1 / FRAMERATE)
+        time.sleep(deltaTime)
 
         if msvcrt.kbhit():
             key = msvcrt.getch()
@@ -117,20 +132,35 @@ def startGame(board):
                 continue
 
             if key == "w":
-                if player1Pos[1] - 1 > 0:
-                    player1Pos[1] -= playerSpeed
+                moveUp = True
             elif key == "s":
-                if player1Pos[1] + 1 < len(board) - 2:
-                    player1Pos[1] += playerSpeed
+                moveDown = True
 
-        ballPos[0] -= ballSpeed[0] / FRAMERATE
+        else:
+
+            if moveUp:
+                moveUp = False
+            if moveDown:
+                moveDown = False
+
+        if moveUp and player1Pos[1] - playerSpeed > 0:
+            player1Pos[1] -= playerSpeed
+        if moveDown and player1Pos[1] + playerSpeed < len(board) - 2:
+            player1Pos[1] += playerSpeed
+
+        if ballPos[1] < player2Pos[1]:
+            if player2Pos[1] - 1 > 0:
+                player2Pos[1] -= 10 * playerSpeed * deltaTime
+        elif ballPos[1] > player2Pos[1]:
+            if player2Pos[1] + 1 < len(board) - 2:
+                player2Pos[1] += 10 * playerSpeed * deltaTime
 
         checkCollision(ballPos, ballSpeed, player1Pos, player2Pos)
-        
+
         ballSpeed = normalizeVelocity(ballSpeed)
-        ballPos[0] -= ballSpeed[0]
-        ballPos[1] -= ballSpeed[1]
-        
+        ballPos[0] -= ballSpeed[0] * deltaTime
+        ballPos[1] -= ballSpeed[1] * deltaTime
+
         tempBoard = insertObjects(board, ballPos, player1Pos, player2Pos)
         printBoard(tempBoard)
 
@@ -143,15 +173,15 @@ def drawCircle(board):
     for y in range(rows):
         for x in range(cols):
             # Check if the point (x, y) is approximately on the circle
-            if abs((x - cx)**2 + (y - cy)**2 - 3**2) < 3:  # Allow some tolerance
-                
-                # Increase X based on distance to center to have a rounder circle
-                new_x = round((abs(cx - x) * 2) + cx) 
+            if abs((x - cx) ** 2 + (y - cy) ** 2 - 3**2) < 3:  # Allow some tolerance
 
-                board[y][new_x] = '*'
-                board[y][cx-(new_x-cx)] = '*'
-                
-    
+                # Increase X based on distance to center to have a rounder circle
+                new_x = round((abs(cx - x) * 2) + cx)
+
+                board[y][new_x] = "*"
+                board[y][cx - (new_x - cx)] = "*"
+
+
 def initBoard(rows=20, cols=100):
     board = [[" " for _ in range(cols)] for _ in range(rows)]
 
@@ -194,15 +224,16 @@ if __name__ == "__main__":
 
     print("\033[?25l")  # Hide cursor
 
-    FRAMERATE = 1000
-
+    FRAMERATE = 100
+    deltaTime = 1/FRAMERATE
+    
     playerDistanceBorder = 3
     playerLen = 2
     playerSpeed = 1
 
     ballDistanceFromPlayer = 30
     ballSpeedMulti = 1.08
-    maxSpeed = 0.3
+    maxSpeed = 100
     ball = [["┏", "━", "┓"], ["┗", "━", "┛"]]
 
     main()
